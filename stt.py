@@ -10,12 +10,8 @@ def get_audio():
         try:
             # 한국어 인식
             said = r.recognize_google(audio, language="ko-KR")
-            print("Your speech:", said)
+            return {"text": said}
         except sr.UnknownValueError:
-            print("Could not understand audio")
+            return {"error": "Could not understand audio"}
         except sr.RequestError as e:
-            print("Could not request results; {0}".format(e))
-    
-    return said
-
-text = get_audio()
+            return {"error": f"API request failed: {e}"}
