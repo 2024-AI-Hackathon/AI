@@ -7,10 +7,6 @@ app = FastAPI()
 # 정적 파일 제공 설정 (HTTP 요청 처리)
 app.mount("/static", StaticFiles(directory=".", html=True), name="static")
 
-
-
-
-
 @app.websocket("/ws/tts")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()

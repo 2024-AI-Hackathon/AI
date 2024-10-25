@@ -7,18 +7,31 @@
 </head>
 <body>
     <input id="textInput" type="text" placeholder="Enter text to speak...">
-    <button onclick="sendMessage()">Send</button>
+    <button onclick="startAutoSend()">Start Auto Send</button>
+    <button onclick="stopAutoSend()">Stop Auto Send</button>
 
     <script>
         const socket = new WebSocket("ws://127.0.0.1:5000/ws/tts");
+        let intervalId;
 
         socket.onopen = () => console.log("WebSocket connected");
         socket.onmessage = (event) => console.log("Message from server:", event.data);
         socket.onclose = () => console.log("WebSocket disconnected");
 
         function sendMessage() {
-            const text = document.getElementById("textInput").value;
+            const text = document.getElementById("textInput").value || "Default message";
             socket.send(text);
+        }
+
+        function startAutoSend() {
+            if (!intervalId) {
+                intervalId = setInterval(sendMessage, 3000); // 3초마다 메시지 전송
+            }
+        }
+
+        function stopAutoSend() {
+            clearInterval(intervalId);
+            intervalId = null;
         }
     </script>
 </body>
