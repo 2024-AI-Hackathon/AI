@@ -1,5 +1,6 @@
 import speech_recognition as sr
 
+# 음성 인식 함수
 def get_audio():
     r = sr.Recognizer()
     with sr.Microphone() as source:
@@ -12,6 +13,6 @@ def get_audio():
             said = r.recognize_google(audio, language="ko-KR")
             return {"text": said}
         except sr.UnknownValueError:
-            return {"error": "Could not understand audio"}
+            return {"text": ""}  # 인식 실패 시 빈 문자열 반환
         except sr.RequestError as e:
             return {"error": f"API request failed: {e}"}
