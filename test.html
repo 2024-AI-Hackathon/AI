@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket TTS Test</title>
+</head>
+<body>
+    <input id="textInput" type="text" placeholder="Enter text to speak...">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const socket = new WebSocket("ws://127.0.0.1:5000/ws/tts");
+
+        socket.onopen = () => console.log("WebSocket connected");
+        socket.onmessage = (event) => console.log("Message from server:", event.data);
+        socket.onclose = () => console.log("WebSocket disconnected");
+
+        function sendMessage() {
+            const text = document.getElementById("textInput").value;
+            socket.send(text);
+        }
+    </script>
+</body>
+</html>
