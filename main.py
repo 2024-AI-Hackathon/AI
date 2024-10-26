@@ -1,22 +1,20 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-import speech_recognition as sr
-from pydub import AudioSegment
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydub import AudioSegment
+from fastapi.staticfiles import StaticFiles
 import asyncio
 import json
 from stt import get_audio
-AudioSegment.converter = "/opt/homebrew/bin/ffmpeg"  # 실제 ffmpeg 설치 경로를 설정
-from fastapi.staticfiles import StaticFiles
 from tts import speak
+from openai_utils import fix_text
+from pydub import AudioSegment
+
+# ffmpeg 경로 설정
+AudioSegment.converter = "/opt/homebrew/bin/ffmpeg"
 
 app = FastAPI()
-# CORS 설정
-origins = [
-    "http://localhost:5173",  # 프론트엔드가 로컬에서 실행 중인 경우
-    "http://127.0.0.1:3000",  # 추가 로컬 주소
-]
 
+# CORS 설정
+origins = ["http://localhost:5173", "http://127.0.0.1:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -25,46 +23,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# STT 엔드포인트
 @app.get("/speech-to-text")
 async def stt():
-    return get_audio()
+    try:
+        return get_audio()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+# STT 웹소켓 엔드포인트
 @app.websocket("/ws/speech-to-text/")
 async def websocket_speech_to_text(websocket: WebSocket):
     await websocket.accept()
-    listening = False  # 음성 인식 중인지 여부
-
-    while True:
-        try:
-            # 클라이언트에서 메시지 수신
+    listening = False
+    try:
+        while True:
             message = await websocket.receive_text()
-
             if message == "start" and not listening:
                 listening = True
                 await websocket.send_text("Listening started...")
-                
-                # 음성 인식을 비동기로 수행
-                # 음성 인식을 비동기로 수행
                 while listening:
-                    result = get_audio()  # 음성을 텍스트로 변환
-                    await websocket.send_text(json.dumps(result, ensure_ascii=False))  # JSON 문자열로 변환하여 전송
-                    await asyncio.sleep(1)  # 간격을 두고 반복
-
+                    result = get_audio()
+                    await websocket.send_text(json.dumps(result, ensure_ascii=False))
+                    await asyncio.sleep(1)
             elif message == "stop":
                 listening = False
                 await websocket.send_text("Listening stopped...")
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    except Exception as e:
+        await websocket.send_text(f"Error: {str(e)}")
 
-        except WebSocketDisconnect:
-            print("Client disconnected")
-            break
-        except Exception as e:
-            await websocket.send_text("")
-            break
-# 정적 파일 제공 설정 (HTTP 요청 처리)
-app.mount("/static", StaticFiles(directory=".", html=True), name="static")
-
+# TTS 웹소켓 엔드포인트
 @app.websocket("/ws/tts")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_tts(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
@@ -74,6 +66,21 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_text(f"Received and spoken: {data}")
     except WebSocketDisconnect:
         print("WebSocket connection closed")
+
+# 텍스트 교정 엔드포인트
+@app.post("/fix/")
+async def correct_text(input_data: dict):
+    try:
+        text = input_data.get("text")
+        if not text:
+            raise HTTPException(status_code=400, detail="No text provided")
+        corrected_text = fix_text(text)
+        return {"original": text, "corrected": corrected_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 정적 파일 제공 설정
+app.mount("/static", StaticFiles(directory=".", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
