@@ -8,6 +8,7 @@ load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
+# 텍스트 오류 수정 메서드
 def fix_text(stt_result: str) -> str:
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -18,6 +19,7 @@ def fix_text(stt_result: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
+# 텍스트 언어 번역 메서드
 def translate_text(text: str, target_lang: str) -> str:
     prompt = (
         f"다음 텍스트를 {target_lang}로 번역해 주세요:\n"
